@@ -1,0 +1,28 @@
+{
+  "name": "purescript-banqi",
+  "version": "1.0.0",
+  "description": "Banqi board game implemented in PureScript",
+  "keywords": [
+    "Purescript"
+  ],
+  "author": "Jonas Buntinx",
+  "license": "MIT",
+  "scripts": {
+    "build": "spago build",
+    "clean": "rm -Rf output node_modules .spago *.lock",
+    "id": "pscid",
+    "pscid:build": "yarn build",
+    "postinstall": "spago install",
+    "start": "node index.js",
+    "test": "spago test --no-install"
+  },
+  "devDependencies": {
+    "pscid": "^2.9.3",
+    "purescript": "^0.13.8",
+    "purescript-psa": "^0.8.0",
+    "purty": "^6.2.0",
+    "spago": "^0.16.0"
+  },
+  "dependencies": {
+  }
+}
