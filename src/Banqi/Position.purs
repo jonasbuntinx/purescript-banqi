@@ -1,10 +1,12 @@
 module Banqi.Position where
 
 import Prelude
+import Control.MonadZero (guard)
 import Data.Bifunctor (lmap, rmap)
-import Data.Int (fromString, quot)
+import Data.Enum (fromEnum)
+import Data.Int (fromString, quot) as Int
 import Data.Maybe (Maybe(..))
-import Data.String (singleton, toCodePointArray)
+import Data.String (codePointAt, singleton, toCodePointArray, toUpper)
 import Data.Tuple (Tuple(..))
 
 type File
@@ -16,18 +18,19 @@ type Rank
 type Position
   = Tuple File Rank
 
-toPosition :: String -> Maybe Position
-toPosition =
+fromString :: String -> Maybe Position
+fromString =
   toCodePointArray >>> map singleton
     >>> case _ of
         [ f, r ] -> do
-          f' <- fromString f
-          r' <- fromString r
+          f' <- (_ - 65) <$> fromEnum <$> codePointAt 0 (toUpper f)
+          r' <- (_ - 1) <$> Int.fromString r
+          guard (between 0 4 r' && between 0 7 f')
           pure $ (Tuple f' r')
         _ -> Nothing
 
 fromIndex :: Int -> Position
-fromIndex n = Tuple (n `mod` 8) (n `quot` 8)
+fromIndex n = Tuple (n `mod` 8) (n `Int.quot` 8)
 
 toIndex :: Position -> Int
 toIndex (Tuple f r) = 8 * r + f

@@ -1,8 +1,8 @@
 module Banqi.Board where
 
 import Prelude
-import Banqi.Position (Position, fromIndex, toIndex)
-import Data.Array (length, mapWithIndex, modifyAt, replicate, sortBy, updateAt, zip, (!!))
+import Banqi.Position (Position, toIndex)
+import Data.Array (length, modifyAt, replicate, singleton, sortBy, updateAt, zip, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, over)
 import Data.Tuple (fst, snd)
@@ -35,60 +35,53 @@ data Square
   | FaceUp Piece
   | Empty
 
-derive instance eqSquare :: Eq Square
-
 newtype Board
   = Board (Array Square)
 
 derive instance newtypeBoard :: Newtype Board _
 
-setupBoard :: Effect Board
-setupBoard = Board <$> (shuffle $ squares Red <> squares Black)
+setup :: Effect Board
+setup = map Board (shuffle (map FaceDown (pieces Red <> pieces Black)))
   where
-  squares color =
-    [ FaceDown { color, label: General } ]
-      <> replicate 2 (FaceDown { color, label: Advisor })
-      <> replicate 2 (FaceDown { color, label: Elephant })
-      <> replicate 2 (FaceDown { color, label: Chariot })
-      <> replicate 2 (FaceDown { color, label: Horse })
-      <> replicate 5 (FaceDown { color, label: Soldier })
-      <> replicate 2 (FaceDown { color, label: Cannon })
+  pieces color =
+    singleton { color, label: General }
+      <> replicate 2 { color, label: Advisor }
+      <> replicate 2 { color, label: Elephant }
+      <> replicate 2 { color, label: Chariot }
+      <> replicate 2 { color, label: Horse }
+      <> replicate 5 { color, label: Soldier }
+      <> replicate 2 { color, label: Cannon }
 
   shuffle xs = do
     ns <- replicateA (length xs) (randomInt 0 top)
     pure (map snd (sortBy (comparing fst) (zip ns xs)))
 
-mapBoard :: forall a. (Position -> Square -> a) -> Board -> Array a
-mapBoard f (Board b) = mapWithIndex (f <<< fromIndex) b
+lookup :: Position -> Board -> Maybe Square
+lookup pos (Board squares) = squares !! toIndex pos
 
-lookupBoard :: Board -> Position -> Maybe Square
-lookupBoard (Board b) pos = if i < 0 || i > 31 then Nothing else b !! i
-  where
-  i = toIndex pos
-
-turnPiece :: Position -> Board -> Board
-turnPiece pos =
+turn :: Position -> Board -> Board
+turn pos =
   over Board
-    ( \b ->
-        fromMaybe b
+    ( \squares ->
+        fromMaybe squares
           $ modifyAt (toIndex pos)
-              ( \s -> case s of
+              ( \square -> case square of
                   FaceDown piece -> FaceUp piece
-                  _ -> s
+                  _ -> square
               )
-              b
+              squares
     )
 
-movePiece :: Position -> Position -> Board -> Board
-movePiece from to board =
+move :: Position -> Position -> Board -> Board
+move from to board =
   over Board
-    ( \b ->
-        fromMaybe b do
-          square <- lookupBoard board from
+    ( \squares ->
+        fromMaybe squares do
+          square <- lookup from board
           case square of
             FaceUp _ -> do
-              b' <- updateAt (toIndex from) Empty b
-              updateAt (toIndex to) square b'
-            _ -> Just b
+              squares' <- updateAt (toIndex from) Empty squares
+              updateAt (toIndex to) square squares'
+            _ -> Just squares
     )
     board

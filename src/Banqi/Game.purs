@@ -1,10 +1,10 @@
 module Banqi.Game where
 
 import Prelude
-import Banqi.Board (Board, Color(..), movePiece, setupBoard, turnPiece)
-import Banqi.Position (toPosition)
+import Banqi.Board (Board, Color(..), move, setup, turn)
+import Banqi.Position (fromString)
 import Banqi.Print (printUpdate)
-import Banqi.Rules (Action(..), legal)
+import Banqi.Rules (Action(..), isLegal)
 import Control.Monad.Except (ExceptT, throwError)
 import Control.Monad.RWS (RWS, get, modify_, tell)
 import Data.Maybe (Maybe(..))
@@ -24,17 +24,17 @@ type Game
 
 init :: Effect State
 init = do
-  board <- setupBoard
+  board <- setup
   pure { board, turn: Red }
 
 update :: Action -> Game Unit
 update action = do
   state <- get
-  if legal state.turn state.board action then do
+  if isLegal state.turn state.board action then do
     case action of
-      Move from to -> modify_ $ _ { board = movePiece from to state.board }
-      Turn pos -> modify_ $ _ { board = turnPiece pos state.board }
-      Capture from to -> modify_ $ _ { board = movePiece from to state.board }
+      Move from to -> modify_ $ _ { board = move from to state.board }
+      Turn pos -> modify_ $ _ { board = turn pos state.board }
+      Capture from to -> modify_ $ _ { board = move from to state.board }
     tell [ printUpdate state.turn action ]
     modify_ $ _ { turn = switchTurn state.turn }
   else
@@ -49,13 +49,13 @@ parse :: String -> Maybe Action
 parse =
   split (Pattern " ")
     >>> case _ of
-        [ "turn", pos ] -> toPosition pos >>= Turn >>> pure
+        [ "turn", pos ] -> fromString pos >>= Turn >>> pure
         [ "move", from, to ] -> do
-          from' <- toPosition from
-          to' <- toPosition to
+          from' <- fromString from
+          to' <- fromString to
           pure $ Move from' to'
         [ "capture", from, to ] -> do
-          from' <- toPosition from
-          to' <- toPosition to
+          from' <- fromString from
+          to' <- fromString to
           pure $ Capture from' to'
         _ -> Nothing

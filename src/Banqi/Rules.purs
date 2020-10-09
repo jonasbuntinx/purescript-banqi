@@ -1,9 +1,9 @@
 module Banqi.Rules where
 
 import Prelude
-import Banqi.Board (Board, Color, Label(..), Square(..), lookupBoard, mapBoard)
-import Banqi.Position (Position, down, left, right, up)
-import Data.Array (concat, elem, filter)
+import Banqi.Board (Board(..), Color, Label(..), Square(..), lookup)
+import Banqi.Position (Position, down, fromIndex, left, right, up)
+import Data.Array (concat, elem, filter, mapWithIndex)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 
@@ -14,19 +14,21 @@ data Action
 
 derive instance eqAction :: Eq Action
 
-legal :: Color -> Board -> Action -> Boolean
-legal color board action = action `elem` (actions board color)
+isLegal :: Color -> Board -> Action -> Boolean
+isLegal color board action = action `elem` (actions board color)
 
 actions :: Board -> Color -> Array Action
-actions board turn =
+actions board@(Board squares) turn =
   concat
-    $ flip mapBoard board \pos -> case _ of
+    $ flip mapWithIndex squares
+    $ fromIndex
+    >>> \pos -> case _ of
         FaceDown piece -> [ Turn pos ]
         FaceUp piece ->
           if piece.color /= turn then
             []
           else
-            moveActions board pos <> captureActions board pos -- TODO: Special cannon rules
+            moveActions board pos <> captureActions board pos
         Empty -> []
 
 moveActions :: Board -> Position -> Array Action
@@ -35,7 +37,7 @@ moveActions board pos@(Tuple f r) =
     # filter canMove
     # map (Move pos)
   where
-  canMove to = case lookupBoard board pos, lookupBoard board to of
+  canMove to = case lookup pos board, lookup to board of
     Just (FaceUp _), Just Empty -> true
     _, _ -> false
 
@@ -45,7 +47,7 @@ captureActions board pos =
     # filter canCapture
     # map (Capture pos)
   where
-  canCapture to = case lookupBoard board pos, lookupBoard board to of
+  canCapture to = case lookup pos board, lookup to board of
     Just (FaceUp attacker), Just (FaceUp target) ->
       attacker.color /= target.color
         && case attacker.label of
