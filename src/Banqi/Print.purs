@@ -1,23 +1,21 @@
 module Banqi.Print where
 
 import Prelude
+
 import Banqi.Board (Board(..), Color(..), Label(..), Piece, Square(..))
 import Banqi.Rules (Action(..))
-import Data.Array (fold, intercalate, mapWithIndex, replicate)
+import Data.Array (drop, fold, intercalate, replicate, reverse, take)
+import Data.Foldable (surround)
 import Data.String (toLower, toUpper)
 
 printBoard :: Board -> String
-printBoard (Board squares) =
-  intercalate ""
-    $ mapWithIndex
-        ( \i s -> case i `mod` 8 of
-            0 -> printSpacer <> "\n" <> printSquare s
-            _ -> printSquare s
-        )
-        squares
+printBoard (Board squares) =  surround printSpacer (map printRank (reverse $ chunks 8 squares))
+
+printRank :: Array Square -> String
+printRank rank = intercalate "" (map printSquare rank)
 
 printSpacer :: String
-printSpacer = fold (replicate 16 " ")
+printSpacer = fold (replicate 16 " ") <> "\n"
 
 printSquare :: Square -> String
 printSquare = case _ of
@@ -58,3 +56,8 @@ printUpdate turn action =
           Move _ _ -> "move"
           Capture _ _ -> "capture"
       )
+
+-- | Utils
+chunks :: forall a. Int -> Array a -> Array (Array a)
+chunks _ [] = []
+chunks n xs = pure (take n xs) <> (chunks n $ drop n xs)

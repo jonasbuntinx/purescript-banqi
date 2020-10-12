@@ -16,7 +16,6 @@ import Node.ReadLine as RL
 -- | -----------------------------------------------------------------------------
 -- | TODO:
 -- | -----------------------------------------------------------------------------
--- | - Print the board with a1 at the bottom-left
 -- | - Make move and capture take the label of the attacking piece as "from position"
 -- | - Proper printTurn implementation
 -- | - Add win condition
@@ -38,7 +37,7 @@ main = do
                 RWSResult _ (Left err) _ -> log err
                 RWSResult state (Right _) written -> do
                   for_ written log
-                  log $ printBoard state.board <> "\n"
+                  log $ printBoard state.board
                   let
                     prompt = printTurn state.turn <> " > "
                   RL.setPrompt prompt (length prompt) interface
