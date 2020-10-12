@@ -64,6 +64,11 @@ read pos (Board squares) = case squares !! toIndex pos of
   Just (FaceUp piece) -> Just piece
   _ -> Nothing
 
+peek :: Position -> Board -> Maybe Piece
+peek pos (Board squares) = case squares !! toIndex pos of
+  Just (FaceDown piece) -> Just piece
+  _ -> Nothing
+
 turn :: Position -> Board -> Board
 turn pos =
   over Board

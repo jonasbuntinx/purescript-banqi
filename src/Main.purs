@@ -1,8 +1,9 @@
 module Main where
 
 import Prelude
+
 import Banqi.Game as Banqi
-import Banqi.Print (printBoard, printTurn)
+import Banqi.Print (printBoard, printColor)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.RWS (RWSResult(..), runRWS)
 import Data.Either (Either(..))
@@ -17,7 +18,6 @@ import Node.ReadLine as RL
 -- | TODO:
 -- | -----------------------------------------------------------------------------
 -- | - Make move and capture take the label of the attacking piece as "from position"
--- | - Proper printTurn implementation
 -- | - Add win condition
 -- | - Add AI player
 -- | -----------------------------------------------------------------------------
@@ -26,7 +26,11 @@ main = do
   initialState <- Banqi.init
   interface <- RL.createConsoleInterface RL.noCompletion
   let
-    lineHandler :: Banqi.State -> String -> Effect Unit
+    setPrompt currentState = do
+      let
+        prompt = printColor currentState.turn <> " > "
+      RL.setPrompt prompt (length prompt) interface
+
     lineHandler currentState input = do
       case input of
         "quit" -> RL.close interface
@@ -38,12 +42,10 @@ main = do
                 RWSResult state (Right _) written -> do
                   for_ written log
                   log $ printBoard state.board
-                  let
-                    prompt = printTurn state.turn <> " > "
-                  RL.setPrompt prompt (length prompt) interface
+                  setPrompt state
                   RL.setLineHandler interface $ lineHandler state
             Nothing -> log "Invalid command"
           RL.prompt interface
-  RL.setPrompt "RED > " 6 interface
+  setPrompt initialState
   RL.setLineHandler interface $ lineHandler initialState
   RL.prompt interface

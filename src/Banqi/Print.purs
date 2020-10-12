@@ -3,13 +3,14 @@ module Banqi.Print where
 import Prelude
 
 import Banqi.Board (Board(..), Color(..), Label(..), Piece, Square(..))
-import Banqi.Rules (Action(..))
+import Banqi.Position (Position, toString)
 import Data.Array (drop, fold, intercalate, replicate, reverse, take)
 import Data.Foldable (surround)
+import Data.Maybe (fromMaybe)
 import Data.String (toLower, toUpper)
 
 printBoard :: Board -> String
-printBoard (Board squares) =  surround printSpacer (map printRank (reverse $ chunks 8 squares))
+printBoard (Board squares) = surround printSpacer (map printRank (reverse $ chunks 8 squares))
 
 printRank :: Array Square -> String
 printRank rank = intercalate "" (map printSquare rank)
@@ -25,13 +26,13 @@ printSquare = case _ of
 
 printPiece :: Piece -> String
 printPiece { color, label } =
-  printLabel label
+  printLabel' label
     # case color of
         Red -> toUpper
         Black -> toLower
 
-printLabel :: Label -> String
-printLabel = case _ of
+printLabel' :: Label -> String
+printLabel' = case _ of
   General -> "G"
   Advisor -> "A"
   Elephant -> "E"
@@ -40,22 +41,23 @@ printLabel = case _ of
   Soldier -> "S"
   Cannon -> "C"
 
-printTurn :: Color -> String
-printTurn = case _ of
-  Red -> "RED"
-  Black -> "black"
+printLabel :: Label -> String
+printLabel = case _ of
+  General -> "General"
+  Advisor -> "Advisor"
+  Elephant -> "Elephant"
+  Chariot -> "Chariot"
+  Horse -> "Horse"
+  Soldier -> "Soldier"
+  Cannon -> "Cannon"
 
-printUpdate :: Color -> Action -> String
-printUpdate turn action =
-  case turn of
-    Red -> "Red"
-    Black -> "Black"
-    <> " performed a "
-    <> ( case action of
-          Turn _ -> "turn"
-          Move _ _ -> "move"
-          Capture _ _ -> "capture"
-      )
+printColor :: Color -> String
+printColor = case _ of
+  Red -> "Red"
+  Black -> "Black"
+
+printPosition :: Position -> String
+printPosition = fromMaybe "unknown" <<< toString
 
 -- | Utils
 chunks :: forall a. Int -> Array a -> Array (Array a)
