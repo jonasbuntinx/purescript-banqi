@@ -1,11 +1,11 @@
 module Banqi.Rules where
 
 import Prelude
-import Banqi.Board (Board(..), Color, Label(..), Square(..), lookup)
+
+import Banqi.Board (Board(..), Color, Label(..), Square(..), look, read)
 import Banqi.Position (Position, down, fromIndex, left, right, up)
-import Data.Array (concat, elem, filter, mapWithIndex)
+import Data.Array (concat, elem, filter, mapMaybe, mapWithIndex)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..))
 
 data Action
   = Move Position Position
@@ -23,39 +23,56 @@ actions board@(Board squares) turn =
     $ flip mapWithIndex squares
     $ fromIndex
     >>> \pos -> case _ of
-        FaceDown piece -> [ Turn pos ]
-        FaceUp piece ->
-          if piece.color /= turn then
-            []
-          else
-            moveActions board pos <> captureActions board pos
-        Empty -> []
+        FaceDown _ -> [ Turn pos ]
+        FaceUp { color, label } | color == turn -> moveActions board pos <>
+          case label of
+            Cannon -> cannonActions board pos
+            _ -> captureActions board pos
+        _ -> []
 
 moveActions :: Board -> Position -> Array Action
-moveActions board pos@(Tuple f r) =
+moveActions board pos =
   apply [ up, down, left, right ] [ pos ]
     # filter canMove
     # map (Move pos)
   where
-  canMove to = case lookup pos board, lookup to board of
+  canMove pos' = case look pos board, look pos' board of
     Just (FaceUp _), Just Empty -> true
     _, _ -> false
 
 captureActions :: Board -> Position -> Array Action
-captureActions board pos =
-  apply [ up, down, left, right ] [ pos ]
-    # filter canCapture
-    # map (Capture pos)
+captureActions board pos = apply [ up, down, left, right ] [ pos ]
+  # filter canCapture
+  # map (Capture pos)
   where
-  canCapture to = case lookup pos board, lookup to board of
-    Just (FaceUp attacker), Just (FaceUp target) ->
-      attacker.color /= target.color
-        && case attacker.label of
-            General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
-            Advisor -> target.label `elem` [ Advisor, Elephant, Chariot, Horse, Soldier, Cannon ]
-            Elephant -> target.label `elem` [ Elephant, Chariot, Horse, Soldier, Cannon ]
-            Chariot -> target.label `elem` [ Chariot, Horse, Soldier, Cannon ]
-            Horse -> target.label `elem` [ Horse, Soldier, Cannon ]
-            Soldier -> target.label `elem` [ General, Soldier ]
-            Cannon -> false
+  canCapture pos' = case read pos board, read pos' board of
+    Just { color, label }, Just target | color /= target.color ->
+      case label of
+          General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
+          Advisor -> target.label `elem` [ Advisor, Elephant, Chariot, Horse, Soldier, Cannon ]
+          Elephant -> target.label `elem` [ Elephant, Chariot, Horse, Soldier, Cannon ]
+          Chariot -> target.label `elem` [ Chariot, Horse, Soldier, Cannon ]
+          Horse -> target.label `elem` [ Horse, Soldier, Cannon ]
+          Soldier -> target.label `elem` [ General, Soldier ]
+          Cannon -> false
     _, _ -> false
+
+cannonActions :: Board -> Position -> Array Action
+cannonActions board pos = mapMaybe findMark [ up, down, left, right ]
+  # filter canCapture
+  # map (Capture pos)
+  where
+  canCapture pos' = case read pos board, read pos' board of
+    Just { color, label: Cannon }, Just target | color /= target.color -> true
+    _, _ -> false
+
+  findMark fn = scout pos false
+    where
+    scout p screenFound =
+      let
+        next = fn p
+      in
+        case look next board of
+          Nothing -> Nothing
+          Just Empty -> scout next screenFound
+          Just _ -> if screenFound then Just next else scout next true

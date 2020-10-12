@@ -56,8 +56,13 @@ setup = map Board (shuffle (map FaceDown (pieces Red <> pieces Black)))
     ns <- replicateA (length xs) (randomInt 0 top)
     pure (map snd (sortBy (comparing fst) (zip ns xs)))
 
-lookup :: Position -> Board -> Maybe Square
-lookup pos (Board squares) = squares !! toIndex pos
+look :: Position -> Board -> Maybe Square
+look pos (Board squares) = squares !! toIndex pos
+
+read :: Position -> Board -> Maybe Piece
+read pos (Board squares) = case squares !! toIndex pos of
+  Just (FaceUp piece) -> Just piece
+  _ -> Nothing
 
 turn :: Position -> Board -> Board
 turn pos =
@@ -77,7 +82,7 @@ move from to board =
   over Board
     ( \squares ->
         fromMaybe squares do
-          square <- lookup from board
+          square <- look from board
           case square of
             FaceUp _ -> do
               squares' <- updateAt (toIndex from) Empty squares

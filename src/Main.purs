@@ -16,9 +16,9 @@ import Node.ReadLine as RL
 -- | -----------------------------------------------------------------------------
 -- | TODO:
 -- | -----------------------------------------------------------------------------
--- | - Add the special cannon rules
 -- | - Print the board with a1 at the bottom-left
 -- | - Make move and capture take the label of the attacking piece as "from position"
+-- | - Proper printTurn implementation
 -- | - Add win condition
 -- | - Add AI player
 -- | -----------------------------------------------------------------------------
