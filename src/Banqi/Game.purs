@@ -4,8 +4,8 @@ import Prelude
 
 import Banqi.Board (Board, Color(..), move, peek, read, setup, turn)
 import Banqi.Position (fromString)
-import Banqi.Print (printColor, printLabel, printPosition)
-import Banqi.Rules (Action(..), isLegal)
+import Banqi.Print (printAction, printColor, printLabel, printPosition)
+import Banqi.Rules (Action(..), actions, isLegal)
 import Control.Monad.Except (ExceptT, throwError)
 import Control.Monad.RWS (RWS, get, modify_, tell)
 import Data.Maybe (Maybe(..), maybe)
@@ -52,6 +52,10 @@ logAction action = do
     Capture from to -> do
       tell [ (printColor state.turn) <> "'s " <> (maybe "unknown" (_.label >>> printLabel) (read from state.board)) <> " captured a " <> (maybe "unknown" (_.label >>> printLabel) (read to state.board)) <> " at " <> printPosition to ]
 
+logLegalActions :: Game Unit
+logLegalActions = do
+  state <- get
+  tell $ actions state.board state.turn <#> printAction
 
 switchTurn :: Color -> Color
 switchTurn = case _ of

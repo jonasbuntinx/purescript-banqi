@@ -4,6 +4,7 @@ import Prelude
 
 import Banqi.Board (Board(..), Color(..), Label(..), Piece, Square(..))
 import Banqi.Position (Position, toString)
+import Banqi.Rules (Action(..))
 import Data.Array (drop, fold, intercalate, replicate, reverse, take)
 import Data.Foldable (surround)
 import Data.Maybe (fromMaybe)
@@ -57,7 +58,13 @@ printColor = case _ of
   Black -> "Black"
 
 printPosition :: Position -> String
-printPosition = fromMaybe "unknown" <<< toString
+printPosition = toLower <<< fromMaybe "unknown" <<< toString
+
+printAction :: Action -> String
+printAction = case _ of
+  Move from to -> "move " <> printPosition from <> " " <> printPosition to
+  Turn pos -> "turn " <> printPosition pos
+  Capture from to -> "capture " <> printPosition from <> " " <> printPosition to
 
 -- | Utils
 chunks :: forall a. Int -> Array a -> Array (Array a)

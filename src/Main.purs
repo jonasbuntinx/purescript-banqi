@@ -34,6 +34,11 @@ main = do
     lineHandler currentState input = do
       case input of
         "quit" -> RL.close interface
+        "help" -> do
+          case runRWS (runExceptT $ Banqi.logLegalActions) unit currentState of
+            RWSResult _ (Left err) _ -> log err
+            RWSResult _ (Right _) written -> for_ written log
+          RL.prompt interface
         _ -> do
           case (Banqi.parse input) of
             Just action -> do
