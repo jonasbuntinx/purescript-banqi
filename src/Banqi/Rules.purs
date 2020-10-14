@@ -2,7 +2,7 @@ module Banqi.Rules where
 
 import Prelude
 
-import Banqi.Board (Board(..), Color, Label(..), Square(..), look, read)
+import Banqi.Board (Board(..), Color, Label(..), Square(..), look, move, read, turn)
 import Banqi.Position (Position, down, fromIndex, left, right, up)
 import Data.Array (concat, elem, filter, mapMaybe, mapWithIndex)
 import Data.Maybe (Maybe(..))
@@ -15,10 +15,10 @@ data Action
 derive instance eqAction :: Eq Action
 
 isLegal :: Color -> Board -> Action -> Boolean
-isLegal color board action = action `elem` (actions board color)
+isLegal color board action = action `elem` (possibleActions board color)
 
-actions :: Board -> Color -> Array Action
-actions board@(Board squares) turn =
+possibleActions :: Board -> Color -> Array Action
+possibleActions board@(Board squares) turn =
   concat
     $ flip mapWithIndex squares
     $ fromIndex
@@ -76,3 +76,9 @@ cannonActions board pos = mapMaybe findMark [ up, down, left, right ]
           Nothing -> Nothing
           Just Empty -> scout next screenFound
           Just _ -> if screenFound then Just next else scout next true
+
+performAction :: Board -> Action -> Board
+performAction board = case _ of
+  Move from to -> move from to board
+  Turn pos -> turn pos board
+  Capture from to -> move from to board

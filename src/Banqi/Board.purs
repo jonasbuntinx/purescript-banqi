@@ -1,8 +1,9 @@
 module Banqi.Board where
 
 import Prelude
+
 import Banqi.Position (Position, toIndex)
-import Data.Array (length, modifyAt, replicate, singleton, sortBy, updateAt, zip, (!!))
+import Data.Array (foldl, length, modifyAt, replicate, singleton, sortBy, updateAt, zip, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, over)
 import Data.Tuple (fst, snd)
@@ -41,20 +42,20 @@ newtype Board
 derive instance newtypeBoard :: Newtype Board _
 
 setup :: Effect Board
-setup = map Board (shuffle (map FaceDown (pieces Red <> pieces Black)))
+setup = map Board (shuffle (playerSquares Red <> playerSquares Black))
   where
-  pieces color =
-    singleton { color, label: General }
-      <> replicate 2 { color, label: Advisor }
-      <> replicate 2 { color, label: Elephant }
-      <> replicate 2 { color, label: Chariot }
-      <> replicate 2 { color, label: Horse }
-      <> replicate 5 { color, label: Soldier }
-      <> replicate 2 { color, label: Cannon }
-
   shuffle xs = do
     ns <- replicateA (length xs) (randomInt 0 top)
     pure (map snd (sortBy (comparing fst) (zip ns xs)))
+
+playerSquares :: Color -> Array Square
+playerSquares color = map FaceDown $ singleton { color, label: General }
+  <> replicate 2 { color, label: Advisor }
+  <> replicate 2 { color, label: Elephant }
+  <> replicate 2 { color, label: Chariot }
+  <> replicate 2 { color, label: Horse }
+  <> replicate 5 { color, label: Soldier }
+  <> replicate 2 { color, label: Cannon }
 
 look :: Position -> Board -> Maybe Square
 look pos (Board squares) = squares !! toIndex pos
@@ -95,3 +96,15 @@ move from to board =
             _ -> Just squares
     )
     board
+
+flipColor :: Color -> Color
+flipColor = case _ of
+  Red -> Black
+  Black -> Red
+
+inventory :: Color -> Board -> Array Label
+inventory player (Board squares) = foldl (\acc ->
+   case _ of
+    FaceUp { label, color } | color == player -> acc <> [ label ]
+    FaceDown { label, color } | color == player -> acc <> [ label ]
+    _ -> acc) [] squares

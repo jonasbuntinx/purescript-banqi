@@ -2,14 +2,14 @@ module Banqi.Game where
 
 import Prelude
 
-import Banqi.Board (Board, Color(..), move, peek, read, setup, turn)
-import Banqi.Position (fromString)
-import Banqi.Print (printAction, printColor, printLabel, printPosition)
-import Banqi.Rules (Action(..), actions, isLegal)
-import Control.Monad.Except (ExceptT, throwError)
-import Control.Monad.RWS (RWS, get, modify_, tell)
-import Data.Maybe (Maybe(..), maybe)
-import Data.String (Pattern(..), split)
+import Banqi.Board (Board, Color(..), flipColor, inventory, peek, read, setup)
+import Banqi.Print (printColor, printLabel, printPosition)
+import Banqi.Rules (Action(..), performAction)
+import Control.Monad.Except (ExceptT, runExceptT)
+import Control.Monad.RWS (RWS, RWSResult, get, modify_, runRWS, tell)
+import Data.Array (null)
+import Data.Either (Either)
+import Data.Maybe (maybe)
 import Effect (Effect)
 
 type State
@@ -23,23 +23,32 @@ type Log
 type Game
   = ExceptT String (RWS Unit Log State)
 
+data Outcome
+  = Continue
+  | Winner Color
+
+type GameResult a
+  = RWSResult State (Either String a) (Array String)
+
 init :: Effect State
 init = do
   board <- setup
   pure { board, turn: Red }
 
-update :: Action -> Game Unit
+run :: forall a. Game a -> State -> GameResult a
+run game state = runRWS (runExceptT game) unit state
+
+update :: Action -> Game Outcome
 update action = do
   state <- get
-  if isLegal state.turn state.board action then do
+  let
+    newBoard = performAction state.board action
+  if playerLoses (flipColor state.turn) newBoard then do
+    pure $ Winner state.turn
+  else do
     logAction action
-    case action of
-      Move from to -> modify_ $ _ { board = move from to state.board }
-      Turn pos -> modify_ $ _ { board = turn pos state.board }
-      Capture from to -> modify_ $ _ { board = move from to state.board }
-    modify_ $ _ { turn = switchTurn state.turn }
-  else
-    throwError "Illegal move"
+    modify_ $ _ { board = newBoard, turn = flipColor state.turn }
+    pure Continue
 
 logAction :: Action -> Game Unit
 logAction action = do
@@ -52,27 +61,9 @@ logAction action = do
     Capture from to -> do
       tell [ (printColor state.turn) <> "'s " <> (maybe "unknown" (_.label >>> printLabel) (read from state.board)) <> " captured a " <> (maybe "unknown" (_.label >>> printLabel) (read to state.board)) <> " at " <> printPosition to ]
 
-logLegalActions :: Game Unit
-logLegalActions = do
-  state <- get
-  tell $ actions state.board state.turn <#> printAction
 
-switchTurn :: Color -> Color
-switchTurn = case _ of
-  Red -> Black
-  Black -> Red
+playerLoses :: Color -> Board -> Boolean
+playerLoses player board = null $ inventory player board
 
-parse :: String -> Maybe Action
-parse =
-  split (Pattern " ")
-    >>> case _ of
-        [ "turn", pos ] -> fromString pos >>= Turn >>> pure
-        [ "move", from, to ] -> do
-          from' <- fromString from
-          to' <- fromString to
-          pure $ Move from' to'
-        [ "capture", from, to ] -> do
-          from' <- fromString from
-          to' <- fromString to
-          pure $ Capture from' to'
-        _ -> Nothing
+gameOver :: Color -> Board -> Boolean
+gameOver player board = playerLoses player board || playerLoses (flipColor player) board
