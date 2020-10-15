@@ -42,6 +42,9 @@ fromIndex n = Tuple (n `mod` 8) (n `Int.quot` 8)
 toIndex :: Position -> Int
 toIndex (Tuple f r) = 8 * r + f
 
+valid :: Position -> Boolean
+valid (Tuple f r) = between 0 4 r && between 0 7 f
+
 up :: Position -> Position
 up = rmap (_ + 1)
 

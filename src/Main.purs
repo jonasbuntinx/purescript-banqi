@@ -41,23 +41,22 @@ main = do
             RWSResult _ (Right _) written -> for_ written log
           RL.prompt interface
         "auto" -> do
-          computerVsComputer currentState $ RL.close interface
+          computerVsComputer currentState (RL.close interface)
         _ -> do
           case parse input of
             Just action -> do
-              state <- playerVsComputer action currentState
-              case state.outcome of
-                Continue -> RL.setLineHandler interface (lineHandler state) *> RL.prompt interface
-                _ -> RL.close interface
+              playerVsComputer action currentState
+                (\state -> RL.setLineHandler interface (lineHandler state) *> RL.prompt interface)
+                (RL.close interface)
             Nothing -> log "Invalid command" *> RL.prompt interface
   setPrompt initialState
   RL.setLineHandler interface $ lineHandler initialState
   RL.prompt interface
 
 computerVsComputer :: State -> Effect Unit -> Effect Unit
-computerVsComputer currentState end = tailRecM go currentState *> end
+computerVsComputer currentState end = tailRecM computerTurn currentState *> end
   where
-  go =
+  computerTurn =
     run computerAction >>> case _ of
       RWSResult _ (Left err) _ -> log err *> (pure $ Done unit)
       RWSResult state (Right _) written -> do
@@ -66,25 +65,24 @@ computerVsComputer currentState end = tailRecM go currentState *> end
           Continue -> pure $ Loop state
           Winner _ -> pure $ Done unit
 
-playerVsComputer :: Action -> State -> Effect State
-playerVsComputer action state = do
-  state' <- playerTurn action state
-  case state'.outcome of
-    Continue -> computerTurn state'
-    _ -> pure state
+playerVsComputer :: Action -> State -> (State -> Effect Unit) -> Effect Unit -> Effect Unit
+playerVsComputer action currentState continue end = playerTurn currentState computerTurn
+  where
+  playerTurn state nextTurn =
+    case run (playerAction action) state of
+      RWSResult _ (Left err) _ -> log err *> continue state
+      RWSResult state' (Right _) written -> do
+        for_ written log
+        case state.outcome of
+          Continue -> nextTurn state'
+          Winner _ -> end
 
-playerTurn :: Action -> State -> Effect State
-playerTurn action currentState =
-  case run (playerAction action) currentState of
-    RWSResult state (Left err) _ -> log err *> (pure state)
-    RWSResult state (Right _) written -> do
-      for_ written log
-      pure state
+  computerTurn state =
+    case run computerAction state of
+      RWSResult _ (Left err) _ -> log err *> continue state
+      RWSResult state' (Right _) written' -> do
+        for_ written' log
+        case state.outcome of
+          Continue -> continue state'
+          Winner _ -> end
 
-computerTurn :: State -> Effect State
-computerTurn currentState =
-  case run computerAction currentState of
-    RWSResult state (Left err) _ -> log err *> (pure state)
-    RWSResult state (Right _) written -> do
-      for_ written log
-      pure state

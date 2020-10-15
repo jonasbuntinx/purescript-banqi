@@ -90,6 +90,7 @@ decideAction = do
   let
     actions = possibleActions state.board state.turn
     newBoards = map (performAction state.board) actions
+  -- Depth 0 for now since we don't wont the computer turn more than 1 piece when traversing the tree
   scores <- traverse (abMinimax 0 (flipColor state.turn) (-100) 100) newBoards
   pure $ fst <$> (maximumBy (\x y -> compare (snd x) (snd y))) (zip actions scores)
 

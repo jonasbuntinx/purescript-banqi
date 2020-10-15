@@ -2,7 +2,7 @@ module Banqi.Board where
 
 import Prelude
 
-import Banqi.Position (Position, toIndex)
+import Banqi.Position (Position, toIndex, valid)
 import Data.Array (foldl, length, modifyAt, replicate, singleton, sortBy, updateAt, zip, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, over)
@@ -57,15 +57,17 @@ setup = map Board (shuffle (generate Red <> generate Black))
     <> replicate 2 { color, label: Cannon }
 
 look :: Position -> Board -> Maybe Square
-look pos (Board squares) = squares !! toIndex pos
+look pos (Board squares)
+  | valid pos = squares !! toIndex pos
+  | otherwise = Nothing
 
 read :: Position -> Board -> Maybe Piece
-read pos (Board squares) = case squares !! toIndex pos of
+read pos board = case look pos board of
   Just (FaceUp piece) -> Just piece
   _ -> Nothing
 
 peek :: Position -> Board -> Maybe Piece
-peek pos (Board squares) = case squares !! toIndex pos of
+peek pos board = case look pos board of
   Just (FaceDown piece) -> Just piece
   _ -> Nothing
 
