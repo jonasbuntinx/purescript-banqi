@@ -2,7 +2,9 @@ module Banqi.Player where
 
 import Prelude
 
-import Banqi.Game (Game, Outcome, update)
+import Banqi.Board (Color(..))
+import Banqi.Decisions (decideAction)
+import Banqi.Game (Game, Outcome(..), update)
 import Banqi.Position (fromString)
 import Banqi.Print (printBoard, printPosition)
 import Banqi.Rules (Action(..), isLegal, possibleActions)
@@ -11,13 +13,32 @@ import Control.Monad.RWS (get, tell)
 import Data.Maybe (Maybe(..))
 import Data.String (Pattern(..), split)
 
-playerAction :: Action -> Game Outcome
+computerAction :: Game Unit
+computerAction = do
+  state <- get
+  maybeAction <- decideAction
+  case maybeAction of
+    Nothing -> pure unit
+    Just action -> do
+      update action
+      get >>= \{ board, outcome } -> do
+        tell [ printBoard board ]
+        case outcome of
+          Continue -> pure unit
+          Winner Red -> tell [ "Red won" ]
+          Winner Black -> tell [ "Black won" ]
+
+playerAction :: Action -> Game Unit
 playerAction action = do
   state <- get
   if isLegal state.turn state.board action then do
-    outcome <- update action
-    get >>= \{ board } -> tell [ printBoard board ]
-    pure outcome
+    update action
+    get >>= \{ board, outcome } -> do
+      tell [ printBoard board ]
+      case outcome of
+        Continue -> pure unit
+        Winner Red -> tell [ "Red won" ]
+        Winner Black -> tell [ "Black won" ]
   else
     throwError "Illegal move"
 

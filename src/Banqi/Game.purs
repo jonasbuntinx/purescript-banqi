@@ -15,7 +15,12 @@ import Effect (Effect)
 type State
   = { board :: Board
     , turn :: Color
+    , outcome :: Outcome
     }
+
+data Outcome
+  = Continue
+  | Winner Color
 
 type Log
   = Array String
@@ -23,32 +28,27 @@ type Log
 type Game
   = ExceptT String (RWS Unit Log State)
 
-data Outcome
-  = Continue
-  | Winner Color
-
 type GameResult a
   = RWSResult State (Either String a) (Array String)
 
 init :: Effect State
 init = do
   board <- setup
-  pure { board, turn: Red }
+  pure { board, turn: Red, outcome: Continue }
 
 run :: forall a. Game a -> State -> GameResult a
 run game state = runRWS (runExceptT game) unit state
 
-update :: Action -> Game Outcome
+update :: Action -> Game Unit
 update action = do
   state <- get
   let
     newBoard = performAction state.board action
   if playerLoses (flipColor state.turn) newBoard then do
-    pure $ Winner state.turn
+    modify_ _ { board = newBoard, outcome = Winner state.turn }
   else do
     logAction action
-    modify_ $ _ { board = newBoard, turn = flipColor state.turn }
-    pure Continue
+    modify_ _ { board = newBoard, turn = flipColor state.turn, outcome = Continue }
 
 logAction :: Action -> Game Unit
 logAction action = do

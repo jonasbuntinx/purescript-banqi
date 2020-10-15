@@ -42,20 +42,19 @@ newtype Board
 derive instance newtypeBoard :: Newtype Board _
 
 setup :: Effect Board
-setup = map Board (shuffle (playerSquares Red <> playerSquares Black))
+setup = map Board (shuffle (generate Red <> generate Black))
   where
   shuffle xs = do
     ns <- replicateA (length xs) (randomInt 0 top)
     pure (map snd (sortBy (comparing fst) (zip ns xs)))
 
-playerSquares :: Color -> Array Square
-playerSquares color = map FaceDown $ singleton { color, label: General }
-  <> replicate 2 { color, label: Advisor }
-  <> replicate 2 { color, label: Elephant }
-  <> replicate 2 { color, label: Chariot }
-  <> replicate 2 { color, label: Horse }
-  <> replicate 5 { color, label: Soldier }
-  <> replicate 2 { color, label: Cannon }
+  generate color = map FaceDown $ singleton { color, label: General }
+    <> replicate 2 { color, label: Advisor }
+    <> replicate 2 { color, label: Elephant }
+    <> replicate 2 { color, label: Chariot }
+    <> replicate 2 { color, label: Horse }
+    <> replicate 5 { color, label: Soldier }
+    <> replicate 2 { color, label: Cannon }
 
 look :: Position -> Board -> Maybe Square
 look pos (Board squares) = squares !! toIndex pos
@@ -69,6 +68,12 @@ peek :: Position -> Board -> Maybe Piece
 peek pos (Board squares) = case squares !! toIndex pos of
   Just (FaceDown piece) -> Just piece
   _ -> Nothing
+
+fromSquare :: Square -> Maybe Piece
+fromSquare = case _ of
+  Empty -> Nothing
+  FaceUp piece -> Just piece
+  FaceDown piece -> Just piece
 
 turn :: Position -> Board -> Board
 turn pos =
