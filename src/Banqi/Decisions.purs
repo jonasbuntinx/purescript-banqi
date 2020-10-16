@@ -4,38 +4,21 @@ import Prelude
 
 import Banqi.Board (Board(..), Color, Label(..), flipColor, fromSquare)
 import Banqi.Game (Game, gameOver)
-import Banqi.Rules (Action, performAction, possibleActions)
+import Banqi.Rules (Action(..), performAction, possibleActions)
+import Control.Monad.Rec.Class (Step(..), tailRecM)
 import Control.Monad.State (get)
-import Data.Array (zip)
+import Data.Array (filter)
 import Data.Array.Partial (head, tail)
 import Data.Foldable (maximum, maximumBy, minimum, sum)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
-import Data.Tuple (fst, snd)
+import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafePartial)
 
 -- | Heuristic value
 type Score
   = Int
 
-labelScore :: Label -> Score
-labelScore = case _ of
-  General -> 1
-  Advisor -> 1
-  Elephant -> 1
-  Chariot -> 1
-  Horse -> 1
-  Soldier -> 1
-  Cannon -> 1
-
-evaluate :: Color -> Board -> Score
-evaluate player (Board squares) = sum $ map
-  ( fromSquare >>> case _ of
-    Nothing -> 0
-    Just { label, color } -> (if color == player then identity else negate) (labelScore label)
-  ) squares
-
--- | Alpha Beta Minimax algorithm
 type Depth
   = Int
 
@@ -45,31 +28,56 @@ type Alpha
 type Beta
   = Int
 
-maxAbMap :: Alpha -> Beta -> (Alpha -> Beta -> Board -> Game Score) -> Array Board -> Game (Array Score)
-maxAbMap alpha beta fn [] = pure []
-maxAbMap alpha beta fn board = do
-  score <- unsafePartial $ fn alpha beta (head board)
-  if score >= beta then
-    pure [ beta ]
-  else if score > alpha then do
-    pure <<< append [ score ] =<< maxAbMap score beta fn rest
-  else
-    pure <<< append [ score ] =<< maxAbMap alpha beta fn rest
+labelScore :: Label -> Score
+labelScore = case _ of
+  General -> 6
+  Advisor -> 5
+  Elephant -> 4
+  Chariot -> 3
+  Horse -> 2
+  Soldier -> 1
+  Cannon -> 7
+
+-- TODO: prevent cat-and-mouse loop
+evaluate :: Color -> Board -> Score
+evaluate player (Board squares) = sum $ map
+  ( fromSquare >>> case _ of
+    Nothing -> 0
+    Just { label, color } -> weight color $ labelScore label
+  ) squares
   where
+  weight color = if color == player then identity else negate
+
+maxAbMap :: Alpha -> Beta -> (Alpha -> Beta -> Board -> Game Score) -> Array Board -> Game (Array Score)
+maxAbMap alpha' beta fn board' = tailRecM go { alpha: alpha', board: board', acc: [] }
+  where
+  go { board: [], acc } = pure $ Done acc
+  go { alpha, board, acc } = do
+    score <- unsafePartial $ fn alpha beta (head board)
+    if score >= beta then
+      pure $ Done $ acc <> [ beta ]
+    else if score > alpha then
+      pure $ Loop { alpha: score, board: rest, acc: acc <> [ score ] }
+    else
+      pure $ Loop { alpha, board: rest, acc: acc <> [ score ] }
+    where
     rest = unsafePartial $ tail board
 
+
 minAbMap :: Alpha -> Beta -> (Alpha -> Beta -> Board -> Game Score) -> Array Board -> Game (Array Score)
-minAbMap alpha beta fn [] = pure []
-minAbMap alpha beta fn board = do
-  score <- unsafePartial $ fn alpha beta (head board)
-  if score <= alpha then
-    pure [ alpha ]
-  else if score < beta then
-    pure <<< append [ score ] =<< minAbMap alpha score fn rest
-  else
-    pure <<< append [ score ] =<< minAbMap alpha beta fn rest
+minAbMap alpha beta' fn board' = tailRecM go { beta: beta', board: board', acc: [] }
   where
-    rest = unsafePartial $ tail  board
+  go { board: [], acc } = pure $ Done acc
+  go { beta, board, acc } = do
+    score <- unsafePartial $ fn alpha beta (head board)
+    if score <= alpha then
+      pure $ Done $ acc <> [ alpha ]
+    else if score < beta then
+      pure $ Loop { beta: score, board: rest, acc: acc <> [ score ] }
+    else
+      pure $ Loop { beta, board: rest, acc: acc <> [ score ] }
+    where
+    rest = unsafePartial $ tail board
 
 abMinimax :: Depth -> Color -> Alpha -> Beta -> Board -> Game Score
 abMinimax depth player alpha beta board
@@ -81,18 +89,27 @@ abMinimax depth player alpha beta board
         then pure <<< maximum' =<< maxAbMap alpha beta (abMinimax (depth - 1) (flipColor player)) newBoards
         else pure <<< minimum' =<< minAbMap alpha beta (abMinimax (depth - 1) (flipColor player)) newBoards
   where
-  actions = possibleActions board player
-  newBoards = map (performAction board) actions
+  newBoards = possibleActions board player
+    # filter case _ of
+        Turn _ -> false
+        _ -> true
+    # map (performAction board)
+
+calculateScore :: Action -> Game (Tuple Action Score)
+calculateScore action = do
+  state <- get
+  let
+    board = performAction state.board action
+  score <- case action of
+    Turn _ -> pure $ evaluate (flipColor state.turn) board
+    _ -> abMinimax 5 (flipColor state.turn) (-100) 100 board
+  pure $ Tuple action score
 
 decideAction :: Game (Maybe Action)
 decideAction = do
   state <- get
-  let
-    actions = possibleActions state.board state.turn
-    newBoards = map (performAction state.board) actions
-  -- Depth 0 for now since we don't wont the computer turn more than 1 piece when traversing the tree
-  scores <- traverse (abMinimax 0 (flipColor state.turn) (-100) 100) newBoards
-  pure $ fst <$> (maximumBy (\x y -> compare (snd x) (snd y))) (zip actions scores)
+  scores <- traverse calculateScore (possibleActions state.board state.turn)
+  pure $ fst <$> (maximumBy (\x y -> compare (snd x) (snd y))) scores
 
 -- | Utils
 maximum' :: Array Int -> Int
