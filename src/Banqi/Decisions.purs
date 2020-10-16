@@ -49,35 +49,34 @@ evaluate player (Board squares) = sum $ map
   weight color = if color == player then identity else negate
 
 maxAbMap :: Alpha -> Beta -> (Alpha -> Beta -> Board -> Game Score) -> Array Board -> Game (Array Score)
-maxAbMap alpha' beta fn board' = tailRecM go { alpha: alpha', board: board', acc: [] }
+maxAbMap alpha' beta fn boards' = tailRecM go { alpha: alpha', boards: boards', acc: [] }
   where
-  go { board: [], acc } = pure $ Done acc
-  go { alpha, board, acc } = do
-    score <- unsafePartial $ fn alpha beta (head board)
+  go { boards: [], acc } = pure $ Done acc
+  go { alpha, boards, acc } = do
+    score <- unsafePartial $ fn alpha beta (head boards)
     if score >= beta then
       pure $ Done $ acc <> [ beta ]
     else if score > alpha then
-      pure $ Loop { alpha: score, board: rest, acc: acc <> [ score ] }
+      pure $ Loop { alpha: score, boards: rest, acc: acc <> [ score ] }
     else
-      pure $ Loop { alpha, board: rest, acc: acc <> [ score ] }
+      pure $ Loop { alpha, boards: rest, acc: acc <> [ score ] }
     where
-    rest = unsafePartial $ tail board
-
+    rest = unsafePartial $ tail boards
 
 minAbMap :: Alpha -> Beta -> (Alpha -> Beta -> Board -> Game Score) -> Array Board -> Game (Array Score)
-minAbMap alpha beta' fn board' = tailRecM go { beta: beta', board: board', acc: [] }
+minAbMap alpha beta' fn boards' = tailRecM go { beta: beta', boards: boards', acc: [] }
   where
-  go { board: [], acc } = pure $ Done acc
-  go { beta, board, acc } = do
-    score <- unsafePartial $ fn alpha beta (head board)
+  go { boards: [], acc } = pure $ Done acc
+  go { beta, boards, acc } = do
+    score <- unsafePartial $ fn alpha beta (head boards)
     if score <= alpha then
       pure $ Done $ acc <> [ alpha ]
     else if score < beta then
-      pure $ Loop { beta: score, board: rest, acc: acc <> [ score ] }
+      pure $ Loop { beta: score, boards: rest, acc: acc <> [ score ] }
     else
-      pure $ Loop { beta, board: rest, acc: acc <> [ score ] }
+      pure $ Loop { beta, boards: rest, acc: acc <> [ score ] }
     where
-    rest = unsafePartial $ tail board
+    rest = unsafePartial $ tail boards
 
 abMinimax :: Depth -> Color -> Alpha -> Beta -> Board -> Game Score
 abMinimax depth player alpha beta board
