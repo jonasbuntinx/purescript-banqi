@@ -2,15 +2,19 @@ module Banqi.Decisions where
 
 import Prelude
 
-import Banqi.Board (Board(..), Color, Label(..), flipColor, fromSquare)
+import Banqi.Board (Board(..), Color, Label(..), Piece, Square(..), flipColor)
 import Banqi.Game (Game, gameOver)
-import Banqi.Rules (Action(..), performAction, possibleActions)
+import Banqi.Position (Position, down, fromIndex, left, right, up)
+import Banqi.Rules (Action(..), canCapture, canMove, findMark, performAction, possibleActions)
+import Banqi.Utils (maximum', minimum')
 import Control.Monad.Rec.Class (Step(..), tailRecM)
 import Control.Monad.State (get)
-import Data.Array (filter)
+import Data.Array (filter, group, mapMaybe, mapWithIndex, sort)
+import Data.Array.NonEmpty as NES
 import Data.Array.Partial (head, tail)
-import Data.Foldable (maximum, maximumBy, minimum, sum)
-import Data.Maybe (Maybe(..))
+import Data.Foldable (maximumBy, sum)
+import Data.Map (fromFoldable, lookup)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Partial.Unsafe (unsafePartial)
@@ -28,23 +32,62 @@ type Alpha
 type Beta
   = Int
 
-labelScore :: Label -> Score
-labelScore = case _ of
-  General -> 6
-  Advisor -> 5
-  Elephant -> 4
-  Chariot -> 3
-  Horse -> 2
-  Soldier -> 1
-  Cannon -> 7
+pieceScore :: Board -> Piece -> Score
+pieceScore board@(Board squares) piece =
+  let
+    remaining = fromFoldable $ map (\l -> Tuple (NES.head l) (NES.length l))
+      $ group
+      $ sort
+      $ squares
+      # mapMaybe case _ of
+        FaceDown p -> Just p
+        FaceUp p -> Just p
+        Empty -> Nothing
+
+    count p = fromMaybe 0 $ lookup p remaining
+  in
+    case piece of
+      { color, label: General } -> 2
+      { color, label: Advisor } -> 2 - count { color, label: Advisor }
+      { color, label: Elephant } -> 2 - count { color, label: Elephant }
+      { color, label: Chariot } -> 2 - count { color, label: Chariot }
+      { color, label: Horse } -> 2 - count { color, label: Horse }
+      { color, label: Soldier } ->
+        if count { color: flipColor color, label: General } /= 0
+          then 5 - count { color, label: Soldier }
+          else 1
+      { color, label: Cannon } -> 1
+
+captureScore :: Board -> Position -> Score
+captureScore board pos = sum $ apply [ up, down, left, right ] [ pos ]
+  # filter (canCapture board pos)
+  # map (const 1)
+
+cannonCaptureScore :: Board -> Position -> Score
+cannonCaptureScore board pos = sum $ mapMaybe (findMark board pos) [ up, down, left, right ]
+  # filter (canCapture board pos)
+  # map (const 1)
+
+movementScore :: Board -> Position -> Int
+movementScore board pos = sum $ apply [ up, down, left, right ] [ pos ]
+  # filter (canMove board pos)
+  # map (const 1)
+
+positionScore :: Board -> Position -> Int
+positionScore board pos = sum [captureScore board pos, movementScore board pos]
+
+cannonScore :: Board -> Position -> Int
+cannonScore board pos = sum [ cannonCaptureScore board pos, movementScore board pos]
 
 -- TODO: prevent cat-and-mouse loop
 evaluate :: Color -> Board -> Score
-evaluate player (Board squares) = sum $ map
-  ( fromSquare >>> case _ of
-    Nothing -> 0
-    Just { label, color } -> weight color $ labelScore label
-  ) squares
+evaluate player board@(Board squares) = sum
+  $ flip mapWithIndex squares
+  $ fromIndex >>> \pos -> case _ of
+    Empty -> 0
+    FaceDown piece@{ color } -> weight color (pieceScore board piece)
+    FaceUp piece@{ color, label } | label == Cannon -> weight color (sum [ pieceScore board piece, cannonScore board pos])
+    FaceUp piece@{ color } -> weight color (sum [ pieceScore board piece, positionScore board pos ])
   where
   weight color = if color == player then identity else negate
 
@@ -101,7 +144,7 @@ calculateScore action = do
     board = performAction state.board action
   score <- case action of
     Turn _ -> pure $ evaluate (flipColor state.turn) board
-    _ -> abMinimax 5 (flipColor state.turn) (-100) 100 board
+    _ -> abMinimax 1 (flipColor state.turn) (-1000) 1000 board
   pure $ Tuple action score
 
 decideAction :: Game (Maybe Action)
@@ -109,16 +152,3 @@ decideAction = do
   state <- get
   scores <- traverse calculateScore (possibleActions state.board state.turn)
   pure $ fst <$> (maximumBy (\x y -> compare (snd x) (snd y))) scores
-
--- | Utils
-maximum' :: Array Int -> Int
-maximum' xs =
-  case maximum xs of
-    Just m -> m
-    Nothing -> 0
-
-minimum' :: Array Int -> Int
-minimum' xs =
-  case minimum xs of
-    Just m -> m
-    Nothing -> 0

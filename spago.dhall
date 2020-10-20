@@ -3,6 +3,7 @@
     [ "console"
     , "effect"
     , "node-readline"
+    , "ordered-collections"
     , "psci-support"
     , "random"
     , "tailrec"

@@ -33,49 +33,48 @@ possibleActions board@(Board squares) turn =
 moveActions :: Board -> Position -> Array Action
 moveActions board pos =
   apply [ up, down, left, right ] [ pos ]
-    # filter canMove
+    # filter (canMove board pos)
     # map (Move pos)
-  where
-  canMove pos' = case look pos board, look pos' board of
-    Just (FaceUp _), Just Empty -> true
-    _, _ -> false
+
+canMove :: Board -> Position -> Position -> Boolean
+canMove board pos pos' = case look pos board, look pos' board of
+  Just (FaceUp _), Just Empty -> true
+  _, _ -> false
 
 captureActions :: Board -> Position -> Array Action
 captureActions board pos = apply [ up, down, left, right ] [ pos ]
-  # filter canCapture
+  # filter (canCapture board pos)
   # map (Capture pos)
-  where
-  canCapture pos' = case read pos board, read pos' board of
-    Just { color, label }, Just target | color /= target.color ->
-      case label of
-          General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
-          Advisor -> target.label `elem` [ Advisor, Elephant, Chariot, Horse, Soldier, Cannon ]
-          Elephant -> target.label `elem` [ Elephant, Chariot, Horse, Soldier, Cannon ]
-          Chariot -> target.label `elem` [ Chariot, Horse, Soldier, Cannon ]
-          Horse -> target.label `elem` [ Horse, Soldier, Cannon ]
-          Soldier -> target.label `elem` [ General, Soldier ]
-          Cannon -> false
-    _, _ -> false
+
+canCapture :: Board -> Position -> Position -> Boolean
+canCapture board pos pos' = case read pos board, read pos' board of
+  Just { color, label }, Just target | color /= target.color ->
+    case label of
+        General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
+        Advisor -> target.label `elem` [ Advisor, Elephant, Chariot, Horse, Soldier, Cannon ]
+        Elephant -> target.label `elem` [ Elephant, Chariot, Horse, Soldier, Cannon ]
+        Chariot -> target.label `elem` [ Chariot, Horse, Soldier, Cannon ]
+        Horse -> target.label `elem` [ Horse, Soldier, Cannon ]
+        Soldier -> target.label `elem` [ General, Soldier ]
+        Cannon -> true
+  _, _ -> false
 
 cannonActions :: Board -> Position -> Array Action
-cannonActions board pos = mapMaybe findMark [ up, down, left, right ]
-  # filter canCapture
+cannonActions board pos = mapMaybe (findMark board pos) [ up, down, left, right ]
+  # filter (canCapture board pos)
   # map (Capture pos)
-  where
-  canCapture pos' = case read pos board, read pos' board of
-    Just { color, label: Cannon }, Just target | color /= target.color -> true
-    _, _ -> false
 
-  findMark fn = scout pos false
-    where
-    scout p screenFound =
-      let
-        next = fn p
-      in
-        case look next board of
-          Nothing -> Nothing
-          Just Empty -> scout next screenFound
-          Just _ -> if screenFound then Just next else scout next true
+findMark :: Board -> Position -> (Position -> Position) -> Maybe (Position)
+findMark board pos fn = scout pos false
+  where
+  scout p screenFound =
+    let
+      next = fn p
+    in
+      case look next board of
+        Nothing -> Nothing
+        Just Empty -> scout next screenFound
+        Just _ -> if screenFound then Just next else scout next true
 
 performAction :: Board -> Action -> Board
 performAction board = case _ of

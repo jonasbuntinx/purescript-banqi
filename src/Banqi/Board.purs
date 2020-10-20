@@ -3,13 +3,11 @@ module Banqi.Board where
 import Prelude
 
 import Banqi.Position (Position, toIndex, valid)
-import Data.Array (foldl, length, modifyAt, replicate, singleton, sortBy, updateAt, zip, (!!))
+import Banqi.Utils (shuffle)
+import Data.Array (foldl, modifyAt, replicate, singleton, updateAt, (!!))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, over)
-import Data.Tuple (fst, snd)
-import Data.Unfoldable (replicateA)
 import Effect (Effect)
-import Effect.Random (randomInt)
 
 data Label
   = General
@@ -22,11 +20,15 @@ data Label
 
 derive instance eqPieceType :: Eq Label
 
+derive instance ordPieceType :: Ord Label
+
 data Color
   = Red
   | Black
 
 derive instance eqColor :: Eq Color
+
+derive instance ordColor :: Ord Color
 
 type Piece
   = { color :: Color, label :: Label }
@@ -44,10 +46,6 @@ derive instance newtypeBoard :: Newtype Board _
 setup :: Effect Board
 setup = map Board (shuffle (generate Red <> generate Black))
   where
-  shuffle xs = do
-    ns <- replicateA (length xs) (randomInt 0 top)
-    pure (map snd (sortBy (comparing fst) (zip ns xs)))
-
   generate color = map FaceDown $ singleton { color, label: General }
     <> replicate 2 { color, label: Advisor }
     <> replicate 2 { color, label: Elephant }
@@ -70,12 +68,6 @@ peek :: Position -> Board -> Maybe Piece
 peek pos board = case look pos board of
   Just (FaceDown piece) -> Just piece
   _ -> Nothing
-
-fromSquare :: Square -> Maybe Piece
-fromSquare = case _ of
-  Empty -> Nothing
-  FaceUp piece -> Just piece
-  FaceDown piece -> Just piece
 
 turn :: Position -> Board -> Board
 turn pos =
