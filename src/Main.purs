@@ -1,7 +1,6 @@
 module Main where
 
 import Prelude
-
 import Banqi.Game (Outcome(..), State, init, run)
 import Banqi.Player (computerAction, help, parse, playerAction)
 import Banqi.Print (printColor)
@@ -57,32 +56,30 @@ computerVsComputer :: State -> Effect Unit -> Effect Unit
 computerVsComputer currentState end = tailRecM computerTurn currentState *> end
   where
   computerTurn =
-    run computerAction >>> case _ of
-      RWSResult _ (Left err) _ -> log err *> (pure $ Done unit)
-      RWSResult state (Right _) written -> do
-        for_ written log
-        case state.outcome of
-          Continue -> pure $ Loop state
-          Winner _ -> pure $ Done unit
+    run computerAction
+      >>> case _ of
+          RWSResult _ (Left err) _ -> log err *> (pure $ Done unit)
+          RWSResult state (Right _) written -> do
+            for_ written log
+            case state.outcome of
+              Continue -> pure $ Loop state
+              Winner _ -> pure $ Done unit
 
 playerVsComputer :: Action -> State -> (State -> Effect Unit) -> Effect Unit -> Effect Unit
 playerVsComputer action currentState continue end = playerTurn currentState computerTurn
   where
-  playerTurn state nextTurn =
-    case run (playerAction action) state of
-      RWSResult _ (Left err) _ -> log err *> continue state
-      RWSResult state' (Right _) written -> do
-        for_ written log
-        case state.outcome of
-          Continue -> nextTurn state'
-          Winner _ -> end
+  playerTurn state nextTurn = case run (playerAction action) state of
+    RWSResult _ (Left err) _ -> log err *> continue state
+    RWSResult state' (Right _) written -> do
+      for_ written log
+      case state.outcome of
+        Continue -> nextTurn state'
+        Winner _ -> end
 
-  computerTurn state =
-    case run computerAction state of
-      RWSResult _ (Left err) _ -> log err *> continue state
-      RWSResult state' (Right _) written' -> do
-        for_ written' log
-        case state.outcome of
-          Continue -> continue state'
-          Winner _ -> end
-
+  computerTurn state = case run computerAction state of
+    RWSResult _ (Left err) _ -> log err *> continue state
+    RWSResult state' (Right _) written' -> do
+      for_ written' log
+      case state.outcome of
+        Continue -> continue state'
+        Winner _ -> end

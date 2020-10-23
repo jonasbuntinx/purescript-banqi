@@ -1,7 +1,6 @@
 module Banqi.Rules where
 
 import Prelude
-
 import Banqi.Board (Board(..), Color, Label(..), Square(..), look, move, read, turn)
 import Banqi.Position (Position, down, fromIndex, left, right, up)
 import Data.Array (concat, elem, filter, mapMaybe, mapWithIndex)
@@ -24,10 +23,12 @@ possibleActions board@(Board squares) turn =
     $ fromIndex
     >>> \pos -> case _ of
         FaceDown _ -> [ Turn pos ]
-        FaceUp { color, label } | color == turn -> moveActions board pos <>
-          case label of
-            Cannon -> cannonActions board pos
-            _ -> captureActions board pos
+        FaceUp { color, label }
+          | color == turn ->
+            moveActions board pos
+              <> case label of
+                  Cannon -> cannonActions board pos
+                  _ -> captureActions board pos
         _ -> []
 
 moveActions :: Board -> Position -> Array Action
@@ -42,27 +43,29 @@ canMove board pos pos' = case look pos board, look pos' board of
   _, _ -> false
 
 captureActions :: Board -> Position -> Array Action
-captureActions board pos = apply [ up, down, left, right ] [ pos ]
-  # filter (canCapture board pos)
-  # map (Capture pos)
+captureActions board pos =
+  apply [ up, down, left, right ] [ pos ]
+    # filter (canCapture board pos)
+    # map (Capture pos)
 
 canCapture :: Board -> Position -> Position -> Boolean
 canCapture board pos pos' = case read pos board, read pos' board of
-  Just { color, label }, Just target | color /= target.color ->
-    case label of
-        General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
-        Advisor -> target.label `elem` [ Advisor, Elephant, Chariot, Horse, Soldier, Cannon ]
-        Elephant -> target.label `elem` [ Elephant, Chariot, Horse, Soldier, Cannon ]
-        Chariot -> target.label `elem` [ Chariot, Horse, Soldier, Cannon ]
-        Horse -> target.label `elem` [ Horse, Soldier, Cannon ]
-        Soldier -> target.label `elem` [ General, Soldier ]
-        Cannon -> true
+  Just { color, label }, Just target
+    | color /= target.color -> case label of
+      General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
+      Advisor -> target.label `elem` [ Advisor, Elephant, Chariot, Horse, Soldier, Cannon ]
+      Elephant -> target.label `elem` [ Elephant, Chariot, Horse, Soldier, Cannon ]
+      Chariot -> target.label `elem` [ Chariot, Horse, Soldier, Cannon ]
+      Horse -> target.label `elem` [ Horse, Soldier, Cannon ]
+      Soldier -> target.label `elem` [ General, Soldier ]
+      Cannon -> true
   _, _ -> false
 
 cannonActions :: Board -> Position -> Array Action
-cannonActions board pos = mapMaybe (findMark board pos) [ up, down, left, right ]
-  # filter (canCapture board pos)
-  # map (Capture pos)
+cannonActions board pos =
+  mapMaybe (findMark board pos) [ up, down, left, right ]
+    # filter (canCapture board pos)
+    # map (Capture pos)
 
 findMark :: Board -> Position -> (Position -> Position) -> Maybe (Position)
 findMark board pos fn = scout pos false

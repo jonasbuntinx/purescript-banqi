@@ -1,7 +1,6 @@
 module Banqi.Position where
 
 import Prelude
-
 import Control.MonadZero (guard)
 import Data.Bifunctor (lmap, rmap)
 import Data.Enum (fromEnum, toEnum)
@@ -31,7 +30,7 @@ fromString =
         _ -> Nothing
 
 toString :: Position -> Maybe String
-toString (Tuple f r) =  do
+toString (Tuple f r) = do
   f' <- singleton <$> toEnum (f + 65)
   rx <- Int.radix 10
   pure (f' <> Int.toStringAs rx (r + 1))

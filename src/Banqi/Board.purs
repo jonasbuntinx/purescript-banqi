@@ -1,7 +1,6 @@
 module Banqi.Board where
 
 import Prelude
-
 import Banqi.Position (Position, toIndex, valid)
 import Banqi.Utils (shuffle)
 import Data.Array (foldl, modifyAt, replicate, singleton, updateAt, (!!))
@@ -46,13 +45,14 @@ derive instance newtypeBoard :: Newtype Board _
 setup :: Effect Board
 setup = map Board (shuffle (generate Red <> generate Black))
   where
-  generate color = map FaceDown $ singleton { color, label: General }
-    <> replicate 2 { color, label: Advisor }
-    <> replicate 2 { color, label: Elephant }
-    <> replicate 2 { color, label: Chariot }
-    <> replicate 2 { color, label: Horse }
-    <> replicate 5 { color, label: Soldier }
-    <> replicate 2 { color, label: Cannon }
+  generate color =
+    map FaceDown $ singleton { color, label: General }
+      <> replicate 2 { color, label: Advisor }
+      <> replicate 2 { color, label: Elephant }
+      <> replicate 2 { color, label: Chariot }
+      <> replicate 2 { color, label: Horse }
+      <> replicate 5 { color, label: Soldier }
+      <> replicate 2 { color, label: Cannon }
 
 look :: Position -> Board -> Maybe Square
 look pos (Board squares)
@@ -102,8 +102,14 @@ flipColor = case _ of
   Black -> Red
 
 inventory :: Color -> Board -> Array Label
-inventory player (Board squares) = foldl (\acc ->
-   case _ of
-    FaceUp { label, color } | color == player -> acc <> [ label ]
-    FaceDown { label, color } | color == player -> acc <> [ label ]
-    _ -> acc) [] squares
+inventory player (Board squares) =
+  foldl
+    ( \acc -> case _ of
+        FaceUp { label, color }
+          | color == player -> acc <> [ label ]
+        FaceDown { label, color }
+          | color == player -> acc <> [ label ]
+        _ -> acc
+    )
+    []
+    squares

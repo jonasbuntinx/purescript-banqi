@@ -1,7 +1,6 @@
 module Banqi.Print where
 
 import Prelude
-
 import Banqi.Board (Board(..), Color(..), Label(..), Piece, Square(..))
 import Banqi.Position (Position, toString)
 import Data.Array (drop, fold, intercalate, replicate, reverse, take)
@@ -62,4 +61,5 @@ printPosition = toLower <<< fromMaybe "unknown" <<< toString
 -- | Utils
 chunks :: forall a. Int -> Array a -> Array (Array a)
 chunks _ [] = []
+
 chunks n xs = pure (take n xs) <> (chunks n $ drop n xs)
