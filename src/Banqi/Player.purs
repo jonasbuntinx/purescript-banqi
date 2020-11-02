@@ -17,7 +17,7 @@ computerAction = do
   state <- get
   maybeAction <- decideAction
   case maybeAction of
-    Nothing -> pure unit
+    Nothing -> throwError "Couldn't decide action"
     Just action -> do
       update action
       get
