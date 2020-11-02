@@ -1,7 +1,7 @@
 module Banqi.Game where
 
 import Prelude
-import Banqi.Board (Board, Color(..), flipColor, inventory, peek, read, setup)
+import Banqi.Board (Board, Color(..), flipColor, inventory, look, peek, setup)
 import Banqi.Print (printColor, printLabel, printPosition)
 import Banqi.Rules (Action(..), performAction)
 import Control.Monad.Except (ExceptT, runExceptT)
@@ -54,11 +54,11 @@ logAction action = do
   state <- get
   case action of
     Move from to -> do
-      tell [ (printColor state.turn) <> " moved a " <> (maybe "unknown" (_.label >>> printLabel) (read from state.board)) <> " to " <> printPosition to ]
+      tell [ (printColor state.turn) <> " moved a " <> (maybe "unknown" (_.label >>> printLabel) (look from state.board)) <> " to " <> printPosition to ]
     Turn pos -> do
       tell [ (printColor state.turn) <> " revealed a " <> (maybe "unknown" (\{ color, label } -> printColor color <> " " <> printLabel label) (peek pos state.board)) <> " at " <> printPosition pos ]
     Capture from to -> do
-      tell [ (printColor state.turn) <> "'s " <> (maybe "unknown" (_.label >>> printLabel) (read from state.board)) <> " captured a " <> (maybe "unknown" (_.label >>> printLabel) (read to state.board)) <> " at " <> printPosition to ]
+      tell [ (printColor state.turn) <> "'s " <> (maybe "unknown" (_.label >>> printLabel) (look from state.board)) <> " captured a " <> (maybe "unknown" (_.label >>> printLabel) (look to state.board)) <> " at " <> printPosition to ]
 
 playerLoses :: Color -> Board -> Boolean
 playerLoses player board = null $ inventory player board

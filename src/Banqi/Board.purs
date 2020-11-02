@@ -54,18 +54,18 @@ setup = map Board (shuffle (generate Red <> generate Black))
       <> replicate 5 { color, label: Soldier }
       <> replicate 2 { color, label: Cannon }
 
-look :: Position -> Board -> Maybe Square
-look pos (Board squares)
+at :: Position -> Board -> Maybe Square
+at pos (Board squares)
   | valid pos = squares !! toIndex pos
   | otherwise = Nothing
 
-read :: Position -> Board -> Maybe Piece
-read pos board = case look pos board of
+look :: Position -> Board -> Maybe Piece
+look pos board = case at pos board of
   Just (FaceUp piece) -> Just piece
   _ -> Nothing
 
 peek :: Position -> Board -> Maybe Piece
-peek pos board = case look pos board of
+peek pos board = case at pos board of
   Just (FaceDown piece) -> Just piece
   _ -> Nothing
 
@@ -87,7 +87,7 @@ move from to board =
   over Board
     ( \squares ->
         fromMaybe squares do
-          square <- look from board
+          square <- at from board
           case square of
             FaceUp _ -> do
               squares' <- updateAt (toIndex from) Empty squares

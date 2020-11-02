@@ -4,7 +4,7 @@ import Prelude
 import Banqi.Board (Board(..), Color, Label(..), Piece, Square(..), flipColor)
 import Banqi.Game (Game, gameOver)
 import Banqi.Position (Position, down, fromIndex, left, right, up)
-import Banqi.Rules (Action(..), canCapture, canMove, findMark, performAction, possibleActions)
+import Banqi.Rules (Action(..), canCapture, canMove, findTarget, performAction, possibleActions)
 import Banqi.Utils (maximum', minimum')
 import Control.Monad.Rec.Class (Step(..), tailRecM)
 import Control.Monad.State (get)
@@ -67,7 +67,7 @@ captureScore board pos =
 
 cannonCaptureScore :: Board -> Position -> Score
 cannonCaptureScore board pos =
-  sum $ mapMaybe (findMark board pos) [ up, down, left, right ]
+  sum $ mapMaybe (findTarget board pos) [ up, down, left, right ]
     # filter (canCapture board pos)
     # map (const 1)
 

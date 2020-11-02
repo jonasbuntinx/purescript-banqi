@@ -1,7 +1,7 @@
 module Banqi.Rules where
 
 import Prelude
-import Banqi.Board (Board(..), Color, Label(..), Square(..), look, move, read, turn)
+import Banqi.Board (Board(..), Color, Label(..), Square(..), at, look, move, turn)
 import Banqi.Position (Position, down, fromIndex, left, right, up)
 import Data.Array (concat, elem, filter, mapMaybe, mapWithIndex)
 import Data.Maybe (Maybe(..))
@@ -38,7 +38,7 @@ moveActions board pos =
     # map (Move pos)
 
 canMove :: Board -> Position -> Position -> Boolean
-canMove board pos pos' = case look pos board, look pos' board of
+canMove board pos pos' = case at pos board, at pos' board of
   Just (FaceUp _), Just Empty -> true
   _, _ -> false
 
@@ -49,7 +49,7 @@ captureActions board pos =
     # map (Capture pos)
 
 canCapture :: Board -> Position -> Position -> Boolean
-canCapture board pos pos' = case read pos board, read pos' board of
+canCapture board pos pos' = case look pos board, look pos' board of
   Just { color, label }, Just target
     | color /= target.color -> case label of
       General -> target.label `elem` [ General, Advisor, Elephant, Chariot, Horse, Cannon ]
@@ -63,21 +63,21 @@ canCapture board pos pos' = case read pos board, read pos' board of
 
 cannonActions :: Board -> Position -> Array Action
 cannonActions board pos =
-  mapMaybe (findMark board pos) [ up, down, left, right ]
+  mapMaybe (findTarget board pos) [ up, down, left, right ]
     # filter (canCapture board pos)
     # map (Capture pos)
 
-findMark :: Board -> Position -> (Position -> Position) -> Maybe (Position)
-findMark board pos fn = scout pos false
+findTarget :: Board -> Position -> (Position -> Position) -> Maybe (Position)
+findTarget board pos fn = search pos false
   where
-  scout p screenFound =
+  search p screenFound =
     let
       next = fn p
     in
-      case look next board of
+      case at next board of
         Nothing -> Nothing
-        Just Empty -> scout next screenFound
-        Just _ -> if screenFound then Just next else scout next true
+        Just Empty -> search next screenFound
+        Just _ -> if screenFound then Just next else search next true
 
 performAction :: Board -> Action -> Board
 performAction board = case _ of
