@@ -1,6 +1,8 @@
 module Banqi.Board where
 
 import Prelude
+
+import Banqi.Action (Action(..))
 import Banqi.Position (Position, toIndex, valid)
 import Banqi.Utils (shuffle)
 import Data.Array (foldl, modifyAt, replicate, singleton, updateAt, (!!))
@@ -113,3 +115,9 @@ inventory player (Board squares) =
     )
     []
     squares
+
+performAction :: Board -> Action -> Board
+performAction board = case _ of
+  Move from to -> move from to board
+  Turn pos -> turn pos board
+  Capture from to -> move from to board

@@ -1,6 +1,8 @@
 module Banqi.Print where
 
 import Prelude
+
+import Banqi.Action (Action(..))
 import Banqi.Board (Board(..), Color(..), Label(..), Piece, Square(..))
 import Banqi.Position (Position, toString)
 import Data.Array (drop, fold, intercalate, replicate, reverse, take)
@@ -57,6 +59,12 @@ printColor = case _ of
 
 printPosition :: Position -> String
 printPosition = toLower <<< fromMaybe "unknown" <<< toString
+
+printAction :: Action -> String
+printAction = case _ of
+  Move from to -> "move " <> printPosition from <> " " <> printPosition to
+  Turn pos -> "turn " <> printPosition pos
+  Capture from to -> "capture " <> printPosition from <> " " <> printPosition to
 
 -- | Utils
 chunks :: forall a. Int -> Array a -> Array (Array a)

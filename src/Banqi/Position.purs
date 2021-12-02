@@ -1,6 +1,7 @@
 module Banqi.Position where
 
 import Prelude
+
 import Control.MonadZero (guard)
 import Data.Bifunctor (lmap, rmap)
 import Data.Enum (fromEnum, toEnum)
@@ -22,12 +23,12 @@ fromString :: String -> Maybe Position
 fromString =
   toCodePointArray >>> map singleton
     >>> case _ of
-        [ f, r ] -> do
-          f' <- (_ - 65) <$> fromEnum <$> codePointAt 0 (toUpper f)
-          r' <- (_ - 1) <$> Int.fromString r
-          guard (between 0 4 r' && between 0 7 f')
-          pure $ (Tuple f' r')
-        _ -> Nothing
+      [ f, r ] -> do
+        f' <- (_ - 65) <$> fromEnum <$> codePointAt 0 (toUpper f)
+        r' <- (_ - 1) <$> Int.fromString r
+        guard (between 0 4 r' && between 0 7 f')
+        pure $ (Tuple f' r')
+      _ -> Nothing
 
 toString :: Position -> Maybe String
 toString (Tuple f r) = do
