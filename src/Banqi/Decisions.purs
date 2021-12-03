@@ -19,29 +19,29 @@ import Partial.Unsafe (unsafePartial)
 
 -- | Heuristic value
 type Score
-  = Int
+  = Number
 
 type Depth
   = Int
 
 type Alpha
-  = Int
+  = Number
 
 type Beta
-  = Int
+  = Number
 
 value :: Label -> Score
 value = case _ of
-  General -> 6
-  Advisor -> 5
-  Elephant -> 4
-  Chariot -> 3
-  Horse -> 2
-  Soldier -> 1
-  Cannon -> 5
+  General -> 6.0
+  Advisor -> 5.0
+  Elephant -> 4.0
+  Chariot -> 3.0
+  Horse -> 2.0
+  Soldier -> 1.0
+  Cannon -> 5.0
 
 evaluate :: Color -> Board -> Score
-evaluate player board = 50 - (sum $ map value $ inventory (flipColor player) board)
+evaluate player board = 50.0 - (sum $ map value $ inventory (flipColor player) board)
 
 maxAbMap :: Alpha -> Beta -> (Alpha -> Beta -> Board -> Game Score) -> Array Board -> Game (Array Score)
 maxAbMap alpha' beta fn boards' = tailRecM go { alpha: alpha', boards: boards', acc: [] }
@@ -77,8 +77,7 @@ minAbMap alpha beta' fn boards' = tailRecM go { beta: beta', boards: boards', ac
 
 abMinimax :: Depth -> Color -> Alpha -> Beta -> Board -> Game Score
 abMinimax depth player alpha beta board
-  | gameOver player board = pure $ evaluate player board
-  | depth == 0 = pure $ evaluate player board
+  | depth == 0 || gameOver player board = pure $ evaluate player board
   | otherwise =
       do
         state <- get
@@ -92,9 +91,9 @@ abMinimax depth player alpha beta board
             # map \action -> performAction board action
         score <- do
           if player == state.turn then
-            pure <<< maximum' =<< maxAbMap alpha beta (abMinimax (depth - 1) player) nextBoards
+            pure <<< maximum' =<< maxAbMap alpha beta (abMinimax (depth - 1) (flipColor player)) nextBoards
           else
-            pure <<< minimum' =<< minAbMap alpha beta (abMinimax (depth - 1) player) nextBoards
+            pure <<< minimum' =<< minAbMap alpha beta (abMinimax (depth - 1) (flipColor player)) nextBoards
         pure score
 
 calculateScore :: Action -> Game (Tuple Action Score)
@@ -102,7 +101,7 @@ calculateScore action = do
   state <- get
   score <- case action of
     Turn _ -> pure $ evaluate state.turn state.board
-    _ -> abMinimax 3 state.turn (-1000) 1000 (performAction state.board action)
+    _ -> abMinimax 3 state.turn (-1000.0) 1000.0 (performAction state.board action)
   pure $ Tuple action score
 
 decideAction :: Game (Maybe Action)

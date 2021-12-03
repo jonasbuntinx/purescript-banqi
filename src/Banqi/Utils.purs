@@ -10,15 +10,15 @@ import Data.Unfoldable (replicateA)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Random (randomInt)
 
-maximum' :: Array Int -> Int
+maximum' :: Array Number -> Number
 maximum' xs = case maximum xs of
   Just m -> m
-  Nothing -> 0
+  Nothing -> 0.0
 
-minimum' :: Array Int -> Int
+minimum' :: Array Number -> Number
 minimum' xs = case minimum xs of
   Just m -> m
-  Nothing -> 0
+  Nothing -> 0.0
 
 shuffle :: forall a m. MonadEffect m => Array a -> m (Array a)
 shuffle xs = do
